@@ -19,7 +19,7 @@ public class EmployeesRepository : IEmployeesRepository
     }
 
     public async Task<Employee> GetEmployeeByIdAsync(Guid id) => 
-        await _context.Employees.FirstOrDefaultAsync(x => x.Id == id) ?? throw new Exception($"Employee with id {id} not found.");
+        await _context.Employees.FirstOrDefaultAsync(x => x.Id.Equals(id)) ?? throw new Exception($"Employee with id {id} not found.");
 
     public async Task AddEmployeeAsync(Employee employee)
     {

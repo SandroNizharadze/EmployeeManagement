@@ -5,7 +5,7 @@ using EmployeePortal.Repositories;
 
 namespace EmployeePortal.Services
 {
-    
+
 
     public class EmployeesService : IEmployeesService
     {
@@ -16,47 +16,62 @@ namespace EmployeePortal.Services
             _employeeRepository = employeeRepository;
         }
 
-        public async Task<List<Employee>> GetAllEmployeesAsync() => 
+        public async Task<List<Employee>> GetAllEmployeesAsync() =>
             await _employeeRepository.GetAllEmployeesAsync();
-         
 
-        public async Task<Employee> GetEmployeeByIdAsync(Guid id) => 
+
+        public async Task<Employee> GetEmployeeByIdAsync(Guid id) =>
             await _employeeRepository.GetEmployeeByIdAsync(id);
 
         public async Task AddEmployeeAsync(CreateEmployeeDto createEmployeeDto)
         {
             var newEmployee = new Employee
             {
-                Name = createEmployeeDto.Name,
-                Email = createEmployeeDto.Email,
-                PhoneNumber = createEmployeeDto.PhoneNumber,
-                Salary = createEmployeeDto.Salary
+                Nickname = createEmployeeDto.Nickname,
+                PhoneNumber = createEmployeeDto.PhoneNumber ?? string.Empty,
+                Salary = createEmployeeDto.Salary ?? string.Empty,
+                CompanyId = createEmployeeDto.CompanyId ?? Guid.Empty,
             };
 
             await _employeeRepository.AddEmployeeAsync(newEmployee);
         }
 
-        public async Task<Employee> UpdateEmployeeAsync(Guid id, UpdateEmployeeDto updateEmployeeDto)
+        public async Task<GetEmployeeDto?> UpdateEmployeeAsync(Guid id, UpdateEmployeeDto updateEmployeeDto)
         {
             var employee = await _employeeRepository.GetEmployeeByIdAsync(id);
-            if (employee == null)
-            {
-                throw new ArgumentNullException(nameof(updateEmployeeDto));
-            }
+            if (employee == null) return null;
 
-            employee.Name = updateEmployeeDto.Name ?? employee.Name;
-            employee.Email = updateEmployeeDto.Email ?? employee.Email;
+            employee.Nickname = updateEmployeeDto.Nickname ?? employee.Nickname;
             employee.PhoneNumber = updateEmployeeDto.PhoneNumber ?? employee.PhoneNumber;
             employee.Salary = updateEmployeeDto.Salary ?? employee.Salary;
+            var UpdatedOn = DateTime.Now;
 
-            var updatedEmployee = await _employeeRepository.UpdateEmployeeAsync(employee); 
+            var updatedEmployee = await _employeeRepository.UpdateEmployeeAsync(employee);
 
-            return employee;
+            return new GetEmployeeDto {
+                Nickname = updatedEmployee.Nickname,
+                PhoneNumber = updatedEmployee.PhoneNumber,
+                isActive = updatedEmployee.isActive
+            };
+        }
+
+        public async Task UpdateEmployeeAsync(Guid id, bool isDeleted) {
+            var employee = await _employeeRepository.GetEmployeeByIdAsync(id);
+            if (employee == null) return;
+
+            employee.isActive = isDeleted;
+            employee.UpdatedOn = DateTime.Now;
+            await _employeeRepository.UpdateEmployeeAsync(employee);
         }
 
         public async Task DeleteEmployeeAsync(Guid id)
         {
             await _employeeRepository.DeleteEmployeeAsync(id);
+        }
+
+        Task<Employee> IEmployeesService.UpdateEmployeeAsync(Guid id, UpdateEmployeeDto updateEmployeeDto)
+        {
+            throw new NotImplementedException();
         }
     }
 }

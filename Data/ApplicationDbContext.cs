@@ -11,4 +11,6 @@ public class ApplicationDbContext : DbContext
 
     public DbSet<Employee> Employees { get; set; }
     public DbSet<Company> Companies { get; set; }
+    public DbSet<EmployeeEpic> EmployeeEpics { get; set; }
+    public DbSet<Epic> Epics { get; set; }
 }

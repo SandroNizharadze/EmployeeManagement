@@ -36,6 +36,12 @@ namespace EmployeePortal.Services
             await _companyRepository.AddCompanyAsync(newCompany);
         }
 
+
+        public async Task DeleteCompanyAsync(Guid id)
+        {
+            await _companyRepository.DeleteCompanyAsync(id);
+        }
+
         public async Task<Company> UpdateCompanyAsync(Guid id, UpdateCompanyDto updateCompanyDto)
         {
             var company = await _companyRepository.GetCompanyByIdAsync(id);
@@ -48,18 +54,7 @@ namespace EmployeePortal.Services
             company.Address = updateCompanyDto.Address ?? company.Address;
 
             var updatedCompany = await _companyRepository.UpdateCompanyAsync(company);
-
             return updatedCompany;
-        }
-
-        public async Task DeleteCompanyAsync(Guid id)
-        {
-            await _companyRepository.DeleteCompanyAsync(id);
-        }
-
-        public Task<Company> UpdateCompanyAsync(Guid id, CreateCompanyDto updateCompanyDto)
-        {
-            throw new NotImplementedException();
         }
     }
 }
