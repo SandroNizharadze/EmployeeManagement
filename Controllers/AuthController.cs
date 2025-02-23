@@ -13,11 +13,14 @@ namespace EmployeePortal.Controllers
     [ApiController]
     public class AuthController : ControllerBase
     {
-        private readonly UserManager<IdentityUser> _userManager;
+        private readonly UserManager<Employee> _userManager;
         private readonly IConfiguration _configuration;
-
-        public AuthController(UserManager<IdentityUser> userManager, IConfiguration configuration)
+        private readonly ILogger<AuthController> _logger;
+        public AuthController(UserManager<Employee> userManager, IConfiguration configuration, ILogger<AuthController> logger)
         {
+            _userManager = userManager;
+            _configuration = configuration; // This will access the appsettings.json configuration
+            _logger = logger;
             _userManager = userManager;
             _configuration = configuration; // This will access the appsettings.json configuration
         }
@@ -28,7 +31,11 @@ namespace EmployeePortal.Controllers
         {
             if (ModelState.IsValid)
             {
-                var user = new IdentityUser { UserName = model.Email, Email = model.Email };
+                if (model.Email == null || model.PhoneNumber == null || model.Salary == null)
+                {
+                    return BadRequest("Email, Phone Number, and Salary cannot be null.");
+                }
+                var user = new Employee { UserName = model.Email, Email = model.Email, PhoneNumber = model.PhoneNumber, Salary = model.Salary };
                 if (string.IsNullOrEmpty(model.Password))
                 {
                     return BadRequest("Password cannot be null or empty.");
@@ -53,38 +60,48 @@ namespace EmployeePortal.Controllers
                 return BadRequest("Email cannot be null or empty.");
             }
             var user = await _userManager.FindByEmailAsync(model.Email);
-            if (user != null && !string.IsNullOrEmpty(model.Password) && await _userManager.CheckPasswordAsync(user, model.Password))
+            if (user == null)
             {
-                // Create JWT claims based on user data
-                var claims = new[]
-                {
-                    new Claim(ClaimTypes.NameIdentifier, user.Id),
-                    new Claim(ClaimTypes.Name, user.UserName ?? string.Empty),
-                    new Claim("role", "Admin") // Example custom claim (role)
-                };
-
-                // Get JWT settings from configuration
-                var jwtKey = _configuration["Jwt:Key"];
-                if (string.IsNullOrEmpty(jwtKey))
-                {
-                    return StatusCode(500, "JWT Key is not configured properly.");
-                }
-                var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey)); // The secret key from appsettings.json
-                var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
-
-                // Create the token
-                var token = new JwtSecurityToken(
-                    issuer: _configuration["Jwt:Issuer"], // The Issuer from appsettings.json
-                    audience: _configuration["Jwt:Audience"], // The Audience from appsettings.json
-                    claims: claims,
-                    expires: DateTime.Now.AddMinutes(30), // Token expiration time (e.g., 30 minutes)
-                    signingCredentials: creds
-                );
-
-                // Return the JWT token
-                return Ok(new { token = new JwtSecurityTokenHandler().WriteToken(token) });
+                _logger.LogWarning("User not found: {Email}", model.Email);
+                return Unauthorized(new { Message = "Invalid credentials" });
             }
-            return Unauthorized(); // If user authentication fails
+
+            if (string.IsNullOrEmpty(model.Password) || !await _userManager.CheckPasswordAsync(user, model.Password))
+            {
+                _logger.LogWarning("Invalid password for user: {Email}", model.Email);
+                return Unauthorized(new { Message = "Invalid credentials" });
+            }
+
+            var roles = await _userManager.GetRolesAsync(user);
+            var claims = new List<Claim>
+            {
+                new Claim(ClaimTypes.NameIdentifier, user.Id),
+                new Claim(ClaimTypes.Name, user.UserName ?? string.Empty)
+            };
+
+            foreach (var role in roles)
+            {
+                claims.Add(new Claim(ClaimTypes.Role, role));
+            }
+
+            var secret = _configuration["JwtSettings:Secret"];
+            if (string.IsNullOrEmpty(secret))
+            {
+                _logger.LogError("JWT Secret is not configured.");
+                return StatusCode(500, "Internal server error");
+            }
+            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secret));
+            var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+
+            var token = new JwtSecurityToken(
+                issuer: _configuration["JwtSettings:Issuer"],
+                audience: _configuration["JwtSettings:Audience"],
+                claims: claims,
+                expires: DateTime.Now.AddMinutes(30),
+                signingCredentials: creds
+            );
+
+            return Ok(new { token = new JwtSecurityTokenHandler().WriteToken(token) });
         }
     }
 }

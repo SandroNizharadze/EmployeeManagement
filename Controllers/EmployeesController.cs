@@ -1,7 +1,5 @@
 using EmployeePortal.DTO;
-using EmployeePortal.Entities;
 using EmployeePortal.Services;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -19,6 +17,7 @@ namespace EmployeePortal.Controllers
         }
 
         [HttpGet]
+        [Authorize(Policy = "AdminPolicy")]
         public async Task<IActionResult> GetEmployees()
         {
             var employees = await _employeeService.GetAllEmployeesAsync();
@@ -26,7 +25,7 @@ namespace EmployeePortal.Controllers
         }
 
         [HttpGet("{id:guid}")]
-        [Authorize]
+        [Authorize(Policy = "UserPolicy")]
         public async Task<IActionResult> GetEmployeeById(Guid id)
         {
             var employee = await _employeeService.GetEmployeeByIdAsync(id);
@@ -39,7 +38,7 @@ namespace EmployeePortal.Controllers
 
         [HttpPost]
         [Route("add")]
-        [Authorize]
+        [Authorize(Policy = "AdminPolicy")]
         public async Task<IActionResult> AddEmployee(CreateEmployeeDto createEmployeeDto)
         {
             await _employeeService.AddEmployeeAsync(createEmployeeDto);
@@ -47,8 +46,8 @@ namespace EmployeePortal.Controllers
         }
 
         [HttpPut]
-        [Route("update/{id:guid}")] 
-        [Authorize]
+        [Route("update/{id:guid}")]
+        [Authorize(Policy = "AdminPolicy")]
         public async Task<IActionResult> UpdateEmployee(Guid id, [FromBody] UpdateEmployeeDto updateEmployeeDto)
         {
             var employee = await _employeeService.UpdateEmployeeAsync(id, updateEmployeeDto);
@@ -56,18 +55,9 @@ namespace EmployeePortal.Controllers
         }
 
         [HttpDelete]
-        [Route("delete/{id:guid}")] 
-        [Authorize]
+        [Route("delete/{id:guid}")]
+        [Authorize(Policy = "AdminPolicy")]
         public async Task<IActionResult> DeleteEmployee(Guid id)
-        {
-            await _employeeService.DeleteEmployeeAsync(id);
-            return Ok();
-        }
-
-        [HttpDelete]
-        [Route("turnicate/{id:guid}")]
-        [Authorize]
-        public async Task<IActionResult> TurnicateEmployee(Guid id)
         {
             await _employeeService.DeleteEmployeeAsync(id);
             return Ok();
